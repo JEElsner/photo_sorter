@@ -1,0 +1,8 @@
+.venv
+.vscode
+auth.json
+log.txt
+test_data
+*.egg-info
+*/__pycache__
+misc
