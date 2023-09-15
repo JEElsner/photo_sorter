@@ -1,6 +1,7 @@
 .venv
 .vscode
 auth.json
+token.txt
 log.txt
 test_data
 *.egg-info
