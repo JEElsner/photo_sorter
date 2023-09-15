@@ -5,6 +5,8 @@ from datetime import datetime
 
 from .ms_graph import Graph
 
+REPORT_PERIOD = 10
+
 
 def sort_photos(graph: Graph, in_path: str, out_path: str):
     in_folder = graph.get_file_id(in_path)
@@ -16,7 +18,10 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
 
     subfolder_cache: Dict[str, str] = dict()
 
-    for file in all_files:
+    for i, file in enumerate(all_files):
+        if i % REPORT_PERIOD == 0 and i != 0:
+            print(f"{i} files processed")
+
         if not should_move(file):
             continue
 
