@@ -6,6 +6,8 @@ import queue
 import threading
 from pathlib import Path
 
+BATCH_REQUEST_MAX = 20
+
 
 class Graph:
     def __init__(self, client_id, tenant_id, scopes):
@@ -24,7 +26,7 @@ class Graph:
     def request_wrapper(self, method: str, *args, **kwargs):
         # Modify the headers to include authentication
         headers = kwargs.get("headers", dict())
-        headers.update({"Authentication": f"Bearer {self.__token}"})
+        headers.update({"Authorization": f"Bearer {self.__token}"})
         kwargs["headers"] = headers
 
         r = requests.request(method, *args, **kwargs)
@@ -37,6 +39,9 @@ class Graph:
                 raise RuntimeError(
                     "Incorrect Microsoft AD settings. Must set supported account types to consumer"
                 )
+        elif r.status_code == 401:
+            if data["error"]["code"] == "InvalidAuthenticationToken":
+                raise RuntimeError("Bad authentication token", data["error"]["message"])
 
         return r
 
@@ -202,16 +207,49 @@ class Graph:
         return r.json()["id"]
 
     def ensure_path(self, base_id: str, subdirs: List[str]) -> str:
-        file = self.get_file_id("/".join(subdirs), from_folder=base_id)
-        if file:
-            return file
+        requests = list()
 
-        path = ""
-        curr_parent = base_id
-        for subdir in subdirs:
-            curr_parent = self.create_directory(curr_parent, subdir)
+        # Base case for recursion, just return the folder when there are no
+        # more folders to verify/create
+        if len(subdirs) < 1:
+            return base_id
 
-        return curr_parent
+        # Create the requests sequentially
+        path_so_far = ""
+        for i, folder in enumerate(subdirs[:BATCH_REQUEST_MAX]):
+            requests.append(
+                {
+                    "id": f"{i}",
+                    "method": "POST",
+                    "url": f"/me/drive/items/{base_id}:{path_so_far}:/children?$select=id",
+                    "headers": {"Content-Type": "application/json"},
+                    "body": {"name": folder, "folder": dict()},
+                }
+            )
+
+            if i > 0:
+                requests[-1].update({"dependsOn": [f"{i-1}"]})
+
+            path_so_far = f"{path_so_far}/{folder}"
+
+        r = self.request_wrapper(
+            "POST",
+            url="https://graph.microsoft.com/v1.0/$batch",
+            json={"requests": requests},
+        )
+
+        # Look through the responses for the last one
+        for resp in r.json()["responses"]:
+            # Ignore all but the last response
+            if resp["id"] != f"{i}":
+                continue
+
+            # Deal with failures... kind of
+            if resp["status"] not in [200, 201]:
+                raise RuntimeError(f"Failed to fully ensure path to {subdirs[-1]}")
+
+            # Repeat if more folders need to be created
+            return self.ensure_path(resp["body"]["id"], subdirs[BATCH_REQUEST_MAX:])
 
 
 class BatchMoveQueue(threading.Thread):
