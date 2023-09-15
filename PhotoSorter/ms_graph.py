@@ -22,15 +22,23 @@ class Graph:
                 f.write(self.__token)
 
     def request_wrapper(self, method: str, *args, **kwargs):
-        kwargs.update({"Authentication": f"Bearer {self.__token}"})
+        # Modify the headers to include authentication
+        headers = kwargs.get("headers", dict())
+        headers.update({"Authentication": f"Bearer {self.__token}"})
+        kwargs["headers"] = headers
 
         r = requests.request(method, *args, **kwargs)
         self.total_requests_made += 1
         data = r.json()
 
+        # Deal with any common errors
         if r.status_code == 400:
             if data["error"]["message"] == "Tenant does not have a SPO license.":
-                pass
+                raise RuntimeError(
+                    "Incorrect Microsoft AD settings. Must set supported account types to consumer"
+                )
+
+        return r
 
     def _device_code_auth(
         self, client_id: str, tenant_id: str, scopes: List[str]
@@ -99,7 +107,7 @@ class Graph:
         else:
             url = f"https://graph.microsoft.com/v1.0/me/drive/items/{from_folder}/children/{file_path}?$select=id"
 
-        r = requests.get(url, headers=header)
+        r = self.request_wrapper("GET", url, headers=header)
         if r.status_code == 404 and (
             r.json()["error"]["code"] == "itemNotFound"
             or (
@@ -124,7 +132,7 @@ class Graph:
 
         params = {"$select": select, "$top": top}
 
-        r = requests.get(url, headers=header, params=params)
+        r = self.request_wrapper("GET", url, headers=header, params=params)
         if r.status_code != 200:
             raise RuntimeError(
                 "Failed to get file children", r.status_code, r.json()["error"]
@@ -134,7 +142,7 @@ class Graph:
         yield from iter(json["value"])
 
         while json.get("@odata.nextLink") is not None:
-            r = requests.get(json["@odata.nextLink"], headers=header)
+            r = self.request_wrapper("GET", json["@odata.nextLink"], headers=header)
             if r.status_code != 200:
                 raise RuntimeError(
                     "Failed to get more child items", r.status_code, r.json()["error"]
@@ -150,7 +158,7 @@ class Graph:
         if select:
             url += "?$select=" + ",".join(select)
 
-        r = requests.get(url, headers=header)
+        r = self.request_wrapper("GET", url, headers=header)
         if r.status_code != 200:
             raise RuntimeError(
                 "Failed to get file info", r.status_code, r.json()["error"]
@@ -166,7 +174,7 @@ class Graph:
             "@microsoft.graph.conflictBehavior": "fail",
         }
 
-        r = requests.patch(url, headers=header, json=content)
+        r = self.request_wrapper("PATCH", url, headers=header, json=content)
 
         if r.status_code == 409 and r.json()["error"]["code"] == "nameAlreadyExists":
             raise RuntimeError(
@@ -185,7 +193,7 @@ class Graph:
         url = f"https://graph.microsoft.com/v1.0/me/drive/items/{parent_id}/children?$select=id"
         body = {"name": name, "folder": {}}
 
-        r = requests.post(url, headers=header, json=body)
+        r = self.request_wrapper("POST", url, headers=header, json=body)
         if r.status_code not in [200, 201]:
             raise RuntimeError(
                 f"Failed to create new folder {name}", r.status_code, r.json()["error"]

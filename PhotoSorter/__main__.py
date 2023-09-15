@@ -33,6 +33,7 @@ def sort_on_onedrive():
 
     end = datetime.now()
     print("Sorting finished")
+    print(f"Total requests: {graph.total_requests_made}")
 
     delta = end - start
     print(f"Duration: {delta}")
