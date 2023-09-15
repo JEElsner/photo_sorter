@@ -3,7 +3,7 @@ from typing import Tuple, Dict
 from dateutil import parser
 from datetime import datetime
 
-from ms_graph import Graph
+from .ms_graph import Graph
 
 
 def sort_photos(graph: Graph, in_path: str, out_path: str):
@@ -11,7 +11,7 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
     out_folder = graph.get_file_id(out_path)
 
     all_files = graph.get_file_children(
-        in_folder, select=["name", "id", "file", "photo"]
+        in_folder, select=["name", "id", "file", "photo", "createdDateTime"], top=5
     )
 
     subfolder_cache: Dict[str, str] = dict()
@@ -20,11 +20,15 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
         if not should_move(file):
             continue
 
-        dt = get_timestamp(file)
+        try:
+            dt = get_timestamp(file)
+        except ValueError:
+            continue
+
         # Format month and year strings to have leading zeros. If someone
         # manages to find a non-four-digit year, I will be impressed.
         year = f"{dt.year:0>4}"
-        month = f"/{dt.month:0>2}"
+        month = f"{dt.month:0>2}"
         subfolder = f"{year}/{month}"
 
         if not (new_loc := subfolder_cache.get(subfolder, None)):
@@ -51,10 +55,12 @@ def should_move(json_data: dict, allowed_types=["image", "video"]) -> bool:
 
 
 def get_timestamp(json_data: dict) -> datetime:
+    timestamp = None
     if photo := json_data.get("photo"):
+        timestamp = photo.get("takenDateTime")
+    else:
+        # timestamp = json_data.get("createdDateTime")
         pass
-
-    timestamp = json_data.get("createDateTime")
 
     if not timestamp:
         # This info might also be missing, but it'll just be none and we'll
