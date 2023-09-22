@@ -5,6 +5,9 @@ import time
 import queue
 import threading
 from pathlib import Path
+import logging as _logging
+
+logging = _logging.getLogger(__name__)
 
 BATCH_REQUEST_MAX = 20
 
@@ -30,6 +33,9 @@ class Graph:
         kwargs["headers"] = headers
 
         r = requests.request(method, *args, **kwargs)
+
+        logging.debug(f"{method}\t{r.url}\t{kwargs.get('json', '')!s:.100}")
+
         self.total_requests_made += 1
         data = r.json()
 
@@ -178,6 +184,8 @@ class Graph:
             "parentReference": {"id": new_location_id},
             "@microsoft.graph.conflictBehavior": "fail",
         }
+
+        logging.debug(f"Moving file\t{file_id}")
 
         r = self.request_wrapper("PATCH", url, headers=header, json=content)
 

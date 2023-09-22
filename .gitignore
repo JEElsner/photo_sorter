@@ -3,6 +3,7 @@
 auth.json
 token.txt
 log.txt
+*.log
 test_data
 *.egg-info
 */__pycache__

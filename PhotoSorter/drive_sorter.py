@@ -5,6 +5,10 @@ from datetime import datetime
 
 from .ms_graph import Graph
 
+import logging as _logging
+
+logging = _logging.getLogger(__name__)
+
 REPORT_PERIOD = 10
 
 
@@ -37,10 +41,17 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
         subfolder = f"{year}/{month}"
 
         if not (new_loc := subfolder_cache.get(subfolder, None)):
+            logging.debug(f"Ensuring path\t{subfolder}")
+
             new_loc = graph.ensure_path(out_folder, [year, month])
             subfolder_cache[subfolder] = new_loc
 
+        logging.debug(f"Creating Move task\t{file['id']}")
+
         graph.move_file(file["id"], new_loc)
+
+        print("All files sorted. Awaiting file moves.")
+        logging.info("All files sorted. Awaiting file moves.")
 
 
 def should_move(json_data: dict, allowed_types=["image", "video"]) -> bool:
