@@ -21,6 +21,7 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
     )
 
     subfolder_cache: Dict[str, str] = dict()
+    moved = 0
 
     for i, file in enumerate(all_files):
         if i % REPORT_PERIOD == 0 and i != 0:
@@ -49,8 +50,9 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
         logging.debug(f"Creating Move task\t{file['id']}")
 
         graph.move_file(file["id"], new_loc)
+        moved += 1
 
-    logging.info(f"Sortation complete. {i} files moved.")
+    logging.info(f"Sortation complete. {i} files processed, {moved} files moved.")
 
 
 def should_move(json_data: dict, allowed_types=["image", "video"]) -> bool:
