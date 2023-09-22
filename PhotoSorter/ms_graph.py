@@ -1,4 +1,5 @@
 import requests
+from collections import namedtuple
 from typing import List, Dict
 from pprint import pprint
 import time
@@ -261,8 +262,12 @@ class Graph:
 
 
 class BatchMoveQueue(threading.Thread):
-    MAX_ITEMS = 20
+    MAX_ITEMS = BATCH_REQUEST_MAX
     TIMEOUT = 1
+
+    MoveOrder = namedtuple("MoveOrder", ["file_id", "new_parent"])
+
+    x = 3
 
     def __init__(self, graph: Graph):
         self.graph = graph
@@ -270,22 +275,52 @@ class BatchMoveQueue(threading.Thread):
         self._q = queue.Queue
         self._stop = threading.Event()
 
-    def put(self, item):
+    def put(self, file_id: str, new_parent: str):
         if not self._stop.is_set():
-            self.q.put(item)
+            self.q.put(BatchMoveQueue.MoveOrder(file_id, new_parent))
 
     def done_adding(self):
         self._stop.set()
 
+    def join(self, timeout):
+        self._q.join()
+        super().join(timeout)
+
     def run(self):
-        while not self._stop.is_set():
+        while not self._q.all_tasks_done():
             requests = list()
+            counter = 0
             for i in range(BatchMoveQueue.MAX_ITEMS):
-                while not self._stop.is_set():
+                while not self._stop.is_set() and not self._q.all_tasks_done():
                     try:
-                        item = self._q.get(timeout=BatchMoveQueue.TIMEOUT)
+                        file_id, new_parent = self._q.get(
+                            timeout=BatchMoveQueue.TIMEOUT
+                        )
+                        counter += 1
                     except queue.Empty:
                         pass
+
+                requests.append(
+                    {
+                        "id": f"{counter}",
+                        "method": "PATCH",
+                        "url": f"/me/drive/items/{file_id}",
+                        "headers": {"Content-Type": "application/json"},
+                        "body": {
+                            "parentReference": {"id": new_parent},
+                            "@microsoft.graph.conflictBehavior": "fail",
+                        },
+                    }
+                )
+
+            r = self.request_wrapper(
+                "POST",
+                url="https://graph.microsoft.com/v1.0/$batch",
+                json={"requests": requests},
+            )
+
+            for i in range(counter):
+                self._q.task_done()
 
 
 if __name__ == "__main__":
