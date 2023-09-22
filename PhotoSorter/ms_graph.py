@@ -267,22 +267,24 @@ class BatchMoveQueue(threading.Thread):
 
     MoveOrder = namedtuple("MoveOrder", ["file_id", "new_parent"])
 
-    def __init__(self, graph: Graph):
+    def __init__(self, graph: Graph, *args, **kwargs):
         self.graph = graph
 
-        self._q = queue.Queue
+        self._q = queue.Queue()
         self._stop = threading.Event()
+
+        super().__init__(*args, **kwargs)
 
     def put(self, file_id: str, new_parent: str):
         logging.debug(f"Put item in queue\t{file_id}")
         if not self._stop.is_set():
-            self.q.put(BatchMoveQueue.MoveOrder(file_id, new_parent))
+            self._q.put(BatchMoveQueue.MoveOrder(file_id, new_parent))
 
     def done_adding(self):
         logging.debug(f"Queue stop condition set")
         self._stop.set()
 
-    def join(self, timeout):
+    def join(self, timeout: float | None = None):
         logging.debug(f"BatchMoveQueue requested to join")
 
         self._q.join()
@@ -293,13 +295,13 @@ class BatchMoveQueue(threading.Thread):
 
     def run(self):
         logging.debug("BatchMoveQueue started")
-        while not self._q.all_tasks_done():
+        while not self._stop.is_set() and not self._q.all_tasks_done:
             logging.debug("Starting new batch")
 
             requests = list()
             counter = 0
             for i in range(BatchMoveQueue.MAX_ITEMS):
-                while not self._stop.is_set() and not self._q.all_tasks_done():
+                while not self._stop.is_set() and not self._q.all_tasks_done:
                     try:
                         file_id, new_parent = self._q.get(
                             timeout=BatchMoveQueue.TIMEOUT
@@ -323,7 +325,7 @@ class BatchMoveQueue(threading.Thread):
                     }
                 )
 
-            logging.debug("Processing batch now")
+            logging.debug("Processing batch of {counter} items now")
 
             r = self.request_wrapper(
                 "POST",
