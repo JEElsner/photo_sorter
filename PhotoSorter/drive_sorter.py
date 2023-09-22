@@ -3,7 +3,7 @@ from typing import Tuple, Dict
 from dateutil import parser
 from datetime import datetime
 
-from .ms_graph import Graph
+from .ms_graph import Graph, BatchMoveQueue
 
 import logging as _logging
 
@@ -21,6 +21,9 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
     )
 
     subfolder_cache: Dict[str, str] = dict()
+
+    batch_mover = BatchMoveQueue(graph)
+    batch_mover.start()
 
     for i, file in enumerate(all_files):
         if i % REPORT_PERIOD == 0 and i != 0:
@@ -48,7 +51,13 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
 
         logging.debug(f"Creating Move task\t{file['id']}")
 
-        graph.move_file(file["id"], new_loc)
+        batch_mover.put(file["id"], new_loc)
+
+    batch_mover.done_adding()
+    logging.info("Done adding move tasks")
+
+    batch_mover.join()
+    logging.info("Moves complete")
 
 
 def should_move(json_data: dict, allowed_types=["image", "video"]) -> bool:
