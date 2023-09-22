@@ -267,8 +267,6 @@ class BatchMoveQueue(threading.Thread):
 
     MoveOrder = namedtuple("MoveOrder", ["file_id", "new_parent"])
 
-    x = 3
-
     def __init__(self, graph: Graph):
         self.graph = graph
 
@@ -276,18 +274,28 @@ class BatchMoveQueue(threading.Thread):
         self._stop = threading.Event()
 
     def put(self, file_id: str, new_parent: str):
+        logging.debug(f"Put item in queue\t{file_id}")
         if not self._stop.is_set():
             self.q.put(BatchMoveQueue.MoveOrder(file_id, new_parent))
 
     def done_adding(self):
+        logging.debug(f"Queue stop condition set")
         self._stop.set()
 
     def join(self, timeout):
+        logging.debug(f"BatchMoveQueue requested to join")
+
         self._q.join()
+        logging.debug(f"Queue joined. Waiting for BatchMoveQueue thread to join.")
+
         super().join(timeout)
+        logging.debug("BatchMoveQueue thread joined")
 
     def run(self):
+        logging.debug("BatchMoveQueue started")
         while not self._q.all_tasks_done():
+            logging.debug("Starting new batch")
+
             requests = list()
             counter = 0
             for i in range(BatchMoveQueue.MAX_ITEMS):
@@ -299,6 +307,8 @@ class BatchMoveQueue(threading.Thread):
                         counter += 1
                     except queue.Empty:
                         pass
+
+                logging.debug(f"Adding item to batch\t{file_id}")
 
                 requests.append(
                     {
@@ -313,11 +323,15 @@ class BatchMoveQueue(threading.Thread):
                     }
                 )
 
+            logging.debug("Processing batch now")
+
             r = self.request_wrapper(
                 "POST",
                 url="https://graph.microsoft.com/v1.0/$batch",
                 json={"requests": requests},
             )
+
+            logging.debug(f"Batch Processed {counter} items processed")
 
             for i in range(counter):
                 self._q.task_done()
