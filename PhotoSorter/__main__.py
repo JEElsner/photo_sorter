@@ -1,5 +1,8 @@
 from . import __version__
 from datetime import datetime
+from . import main_log
+
+log = main_log.getChild(__name__)
 
 
 def sort_on_disk():
@@ -26,17 +29,17 @@ def sort_on_onedrive():
     )
     out_path = input("Enter output location for sorted photos.\n> ")
 
-    print("Beginning sorting")
+    log.info("Beginning sorting")
     start = datetime.now()
 
     drive_sorter.sort_photos(graph, in_path, out_path)
 
     end = datetime.now()
-    print("Sorting finished")
-    print(f"Total requests: {graph.total_requests_made}")
+    log.info("Sorting finished")
+    log.info(f"Total requests: {graph.total_requests_made}")
 
     delta = end - start
-    print(f"Duration: {delta}")
+    log.info(f"Duration: {delta}")
 
 
 print(f"PhotoSorter version {__version__}")

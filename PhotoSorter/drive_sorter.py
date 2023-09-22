@@ -4,10 +4,9 @@ from dateutil import parser
 from datetime import datetime
 
 from .ms_graph import Graph
+from . import main_log
 
-import logging as _logging
-
-logging = _logging.getLogger(__name__)
+logging = main_log.getChild(__name__)
 
 REPORT_PERIOD = 10
 
@@ -25,7 +24,7 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
 
     for i, file in enumerate(all_files):
         if i % REPORT_PERIOD == 0 and i != 0:
-            print(f"{i} files processed")
+            logging.info(f"{i} files processed")
 
         if not should_move(file):
             continue

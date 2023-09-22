@@ -6,8 +6,9 @@ import queue
 import threading
 from pathlib import Path
 import logging as _logging
+from . import main_log
 
-logging = _logging.getLogger(__name__)
+logging = main_log.getChild(__name__)
 
 BATCH_REQUEST_MAX = 20
 
@@ -25,6 +26,8 @@ class Graph:
 
             with open("./token.txt", mode="w") as f:
                 f.write(self.__token)
+
+        logging.info("Graph initialized")
 
     def request_wrapper(self, method: str, *args, **kwargs):
         # Modify the headers to include authentication
