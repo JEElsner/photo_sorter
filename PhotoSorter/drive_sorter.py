@@ -50,9 +50,6 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
 
         graph.move_file(file["id"], new_loc)
 
-        print("All files sorted. Awaiting file moves.")
-        logging.info("All files sorted. Awaiting file moves.")
-
 
 def should_move(json_data: dict, allowed_types=["image", "video"]) -> bool:
     file = json_data.get("file")
