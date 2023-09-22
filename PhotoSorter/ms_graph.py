@@ -287,24 +287,15 @@ class BatchMoveQueue(threading.Thread):
         logging.debug(f"Queue stop condition set")
         self._stop.set()
 
-    def join(self, timeout: float | None = None):
-        logging.debug(f"BatchMoveQueue requested to join")
-
-        self._q.join()
-        logging.debug(f"Queue joined. Waiting for BatchMoveQueue thread to join.")
-
-        super().join(timeout)
-        logging.debug("BatchMoveQueue thread joined")
-
     def run(self):
         logging.debug("BatchMoveQueue started")
-        while not self._stop.is_set() and not self._q.all_tasks_done:
+        while not self._stop.is_set():
             logging.debug("Starting new batch")
 
             requests = list()
             counter = 0
             for i in range(BatchMoveQueue.MAX_ITEMS):
-                while not self._stop.is_set() and not self._q.all_tasks_done:
+                while not self._stop.is_set():
                     try:
                         file_id, new_parent = self._q.get(
                             timeout=BatchMoveQueue.TIMEOUT
@@ -330,7 +321,7 @@ class BatchMoveQueue(threading.Thread):
 
             logging.debug("Processing batch of {counter} items now")
 
-            r = self.request_wrapper(
+            r = self.graph.request_wrapper(
                 "POST",
                 url="https://graph.microsoft.com/v1.0/$batch",
                 json={"requests": requests},
@@ -340,6 +331,8 @@ class BatchMoveQueue(threading.Thread):
 
             for i in range(counter):
                 self._q.task_done()
+
+        logging.debug("Batch processing stopped")
 
 
 if __name__ == "__main__":
