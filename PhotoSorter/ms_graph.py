@@ -12,6 +12,7 @@ from . import main_log
 logging = main_log.getChild(__name__)
 
 BATCH_REQUEST_MAX = 20
+EMPTY_LIMIT = 100
 
 
 class Graph:
@@ -156,7 +157,16 @@ class Graph:
         json = r.json()
         yield from iter(json["value"])
 
+        empty_results = 0
+
         while json.get("@odata.nextLink") is not None:
+            # For whatever reason, sometimes OneDrive keeps giving next links,
+            # but all of the values are empty. Short-circut and stop after
+            # several empty pages of results
+            if empty_results >= EMPTY_LIMIT:
+                logging.warn("Too many pages of empty results of children. Stopping.")
+                break
+
             r = self.request_wrapper("GET", json["@odata.nextLink"], headers=header)
             if r.status_code != 200:
                 raise RuntimeError(
@@ -164,6 +174,13 @@ class Graph:
                 )
 
             json = r.json()
+
+            if len(json["value"]) == 0:
+                empty_results += 1
+                logging.warn(
+                    f"Empty children result page encountered, count: {empty_results}"
+                )
+
             yield from iter(json["value"])
 
     def get_file_info(self, file_id, select=None):
@@ -271,38 +288,40 @@ class BatchMoveQueue(threading.Thread):
     MoveOrder = namedtuple("MoveOrder", ["file_id", "new_parent"])
 
     def __init__(self, graph: Graph, *args, **kwargs):
+        threading.Thread.__init__(self, *args, **kwargs)
+
         self.graph = graph
 
         self._q = queue.Queue()
-        self._stop = threading.Event()
-
-        super().__init__(*args, **kwargs)
+        self.__stop = threading.Event()
 
     def put(self, file_id: str, new_parent: str):
         logging.debug(f"Put item in queue\t{file_id}")
-        if not self._stop.is_set():
+        if not self.__stop.is_set():
             self._q.put(BatchMoveQueue.MoveOrder(file_id, new_parent))
 
     def done_adding(self):
         logging.debug(f"Queue stop condition set")
-        self._stop.set()
+        self.__stop.set()
 
     def run(self):
         logging.debug("BatchMoveQueue started")
-        while not self._stop.is_set():
+        while not self.__stop.is_set():
             logging.debug("Starting new batch")
 
             requests = list()
             counter = 0
             for i in range(BatchMoveQueue.MAX_ITEMS):
-                while not self._stop.is_set():
+                while not self.__stop.is_set():
                     try:
                         file_id, new_parent = self._q.get(
                             timeout=BatchMoveQueue.TIMEOUT
                         )
-                        counter += 1
+                        break
                     except queue.Empty:
                         pass
+                else:
+                    break
 
                 logging.debug(f"Adding item to batch\t{file_id}")
 
@@ -318,8 +337,11 @@ class BatchMoveQueue(threading.Thread):
                         },
                     }
                 )
+                counter += 1
 
-            logging.debug("Processing batch of {counter} items now")
+            logging.info(
+                f"Moving batch of {counter} images now. Approximately {self._q.qsize()} more images in queue."
+            )
 
             r = self.graph.request_wrapper(
                 "POST",
@@ -327,10 +349,23 @@ class BatchMoveQueue(threading.Thread):
                 json={"requests": requests},
             )
 
-            logging.debug(f"Batch Processed {counter} items processed")
+            if r.status_code != 200:
+                err = r.json()["error"]
+                message = err["message"]
+                logging.warn(f"Error processing batch: {message}")
 
-            for i in range(counter):
-                self._q.task_done()
+            for resp in r.json()["responses"]:
+                if resp["status"] not in [200, 201]:
+                    body = resp["body"]
+                    err = body["error"]
+                    error_code = err["code"]
+                    message = err["message"]
+                    logging.warn(f"Failed to move file: {message}")
+
+                try:
+                    self._q.task_done()
+                except ValueError:
+                    pass
 
         logging.debug("Batch processing stopped")
 
