@@ -25,7 +25,7 @@ def sort_on_onedrive():
         graph = Graph(auth_info["clientId"], auth_info["tenantId"], auth_info["scopes"])
 
     in_path = input(
-        "Enter path to photos from root. e.g. if the photos are located at root:/Pictures/Camera Roll, enter /Pictures/Camera Roll.\n> "
+        "Enter path to photos from root. e.g. if the photos are located at root:/Pictures/Camera Roll, enter Pictures/Camera Roll.\n> "
     )
     out_path = input("Enter output location for sorted photos.\n> ")
 

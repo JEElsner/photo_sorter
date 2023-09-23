@@ -8,7 +8,7 @@ from . import main_log
 
 logging = main_log.getChild(__name__)
 
-REPORT_PERIOD = 10
+REPORT_PERIOD = 50
 
 
 def sort_photos(graph: Graph, in_path: str, out_path: str):
@@ -28,7 +28,7 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
 
     for i, file in enumerate(all_files):
         if i % REPORT_PERIOD == 0 and i != 0:
-            logging.info(f"{i} files processed")
+            logging.info(f"{i} files examined")
 
         if not should_move(file):
             continue
