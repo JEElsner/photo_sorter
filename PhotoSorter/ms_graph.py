@@ -12,7 +12,21 @@ from . import main_log
 logging = main_log.getChild(__name__)
 
 BATCH_REQUEST_MAX = 20
+"""Maximum number of requests per batch allowed."""
+
 EMPTY_LIMIT = 100
+"""The number of empty pages to allow when getting the children of a folder
+before quitting.
+
+Sometimes the Graph API returns empty pages of results for the children of a
+folder and sometimes after several empty pages, a non-empty page will be
+returned. This parameter balances how many empty pages will be checked before
+assuming that all remaining pages are empty and terminating the search for more
+children.
+
+It's hard to determine what a good number is for this parameter, but it seems
+that 100 is conservative, in that this checks many empty pages before stopping.
+"""
 
 
 class Graph:

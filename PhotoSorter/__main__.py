@@ -6,6 +6,8 @@ log = main_log.getChild(__name__)
 
 
 def sort_on_disk():
+    """Sort photos on a physical file system."""
+
     from pathlib import Path
     from . import photo_sorter
 
@@ -16,6 +18,8 @@ def sort_on_disk():
 
 
 def sort_on_onedrive():
+    """Sort photos on a OneDrive associated with a Microsoft Account"""
+
     from . import drive_sorter
     from .ms_graph import Graph
     import json
@@ -42,6 +46,7 @@ def sort_on_onedrive():
     log.info(f"Duration: {delta}")
 
 
+# Main code
 print(f"PhotoSorter version {__version__}")
 
 print(f"0 - Sort Photos on local disk\n1 - Sort Photos on OneDrive")

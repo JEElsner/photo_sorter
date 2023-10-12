@@ -9,9 +9,20 @@ from . import main_log
 logging = main_log.getChild(__name__)
 
 REPORT_PERIOD = 50
+"""How often to log how many files were checked"""
 
 
 def sort_photos(graph: Graph, in_path: str, out_path: str):
+    """Sort photos using the Microsoft Graph API
+
+    Args:
+        graph: The Graph API instance referencing the OneDrive with the photos
+        in_path: The human-readable path from the OneDrive root to the photos
+            that will be sorted.
+        out_path: The human-readable path from the OneDrive root to the
+        top-level destination folder for the newly sorted photos and the folder
+        hierarchy by which they are sorted. Can be the same as ``in_path``.
+    """
     in_folder = graph.get_file_id(in_path)
     out_folder = graph.get_file_id(out_path)
 
@@ -65,26 +76,59 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
 
 
 def should_move(json_data: dict, allowed_types=["image", "video"]) -> bool:
+    """Looks at a file object and determines whether it can and should be
+    sorted.
+
+    Args:
+        json_data: The attributes of the file
+        allowed_types: The file types that will be sorted"""
+
     file = json_data.get("file")
     if not file:
+        # File is not a file (i.e. a folder), do not move
         return False
 
     file_type: str = file.get("mimeType")
     if not file_type:
+        # File does not have a mime-type, so it probably shouldn't be moved
         return False
 
     for allowed_type in allowed_types:
         if file_type.startswith(allowed_type):
+            # We want to move this file
             return True
 
     return False
 
 
 def get_timestamp(json_data: dict) -> datetime:
+    """Try to get an accurate timestamp of when the photo was taken from the
+    file metadata.
+
+    If a photo does not have metadata pertaining explicitly to when the photo
+    was taken, other date information (such as when the file was created) is
+    arbitrary, and may not be related to the image capture date, so this
+    function is conservative and ignores that data.
+
+    Args:
+        json_data: The file metadata, as JSON
+
+    Returns:
+        A datetime object describing when the photo was taken
+
+    Raises:
+        ValueError:
+            If no timestamp can be found for the file.
+    """
     timestamp = None
     if photo := json_data.get("photo"):
         timestamp = photo.get("takenDateTime")
     else:
+        # I think the line below is for if we want to accept the created time
+        # as the time the photo was taken for all files. Uncomment it if you
+        # want to find a timestamp for more files (at the sacrifice of
+        # timestamp accuracy)
+        #
         # timestamp = json_data.get("createdDateTime")
         pass
 
