@@ -139,14 +139,41 @@ class Graph:
 
         return r.json()["id"]
 
-    def get_file_children(self, file_id, select=None, top=None) -> iter:
+    def get_file_children(
+        self, file_id: str, select: List[str] | None = None, top: int | None = None
+    ) -> iter:
+        """Get the child items of a folder.
+
+        The Microsoft Graph API returns the children in pages of results. The
+        ``top`` argument specifies the maximum number of results per page.
+
+        Args:
+            file_id: The id of the folder of which to select the children
+            select: The list of attributes to select about the children
+            top: The maximum number of results per page
+
+        Yields:
+            The JSON representation of one child at a time, with the selected
+            attributes.
+
+        Raises:
+            RuntimeError: If the graph fails to get the children or cannot get
+                more children (even though there should be more).
+        """
+
         header = {"Authorization": f"Bearer {self.__token}"}
         url = f"https://graph.microsoft.com/v1.0/me/drive/items/{file_id}/children"
 
         if select:
             select = ",".join(select)
 
-        params = {"$select": select, "$top": top}
+        params = dict()
+
+        if select:
+            params["$select"] = select
+
+        if top:
+            params["$top"] = top
 
         r = self.request_wrapper("GET", url, headers=header, params=params)
         if r.status_code != 200:
