@@ -20,7 +20,3 @@ __stdout_logger.setFormatter(__logging.Formatter("%(message)s"))
 
 main_log = __logging.getLogger("")
 main_log.addHandler(__stdout_logger)
-
-# Load remaining modules
-from . import ms_graph
-from . import photo_sorter, drive_sorter

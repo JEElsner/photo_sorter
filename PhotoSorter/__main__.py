@@ -9,12 +9,12 @@ def sort_on_disk():
     """Sort photos on a physical file system."""
 
     from pathlib import Path
-    from . import photo_sorter
+    from . import disk_sorter
 
     in_path = input("Photos Location: ")
     out_path = input("Sorted Location: ")
 
-    photo_sorter.move_photos(Path(in_path), Path(out_path))
+    disk_sorter.move_photos(Path(in_path), Path(out_path))
 
 
 def sort_on_onedrive():
