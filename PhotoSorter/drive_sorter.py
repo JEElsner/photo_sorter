@@ -16,7 +16,7 @@ def sort_photos(graph: Graph, in_path: str, out_path: str):
     out_folder = graph.get_file_id(out_path)
 
     all_files = graph.get_file_children(
-        in_folder, select=["name", "id", "file", "photo", "createdDateTime"], top=5
+        in_folder, select=["name", "id", "file", "photo", "createdDateTime"]
     )
 
     subfolder_cache: Dict[str, str] = dict()
