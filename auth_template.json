@@ -1,0 +1,11 @@
+{
+    "clientId": "[CLIENT-ID]",
+    "tenantId": "[TENANT-ID]",
+    "scopes": [
+        "User.Read",
+        "Files.Read",
+        "Files.ReadWrite",
+        "Files.Read.All",
+        "Files.ReadWrite.All"
+    ]
+}
