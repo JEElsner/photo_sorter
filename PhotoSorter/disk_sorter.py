@@ -10,6 +10,14 @@ logging = main_log.getChild(__name__)
 
 
 def move_photos(source: Path, out: Path, max_files=float("inf")):
+    """Sort photos on a local disk file path into subfolder based upon the
+    photos' metadata.
+
+    Args:
+        source: The source directory from which to sort the contained photos
+        out: The out directory to put the sorted file tree
+        max_files: The maximum number of files to sort
+    """
     if not source.exists():
         raise ValueError("source path does not exist")
     if not out.exists():
