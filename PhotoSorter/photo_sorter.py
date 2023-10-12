@@ -4,9 +4,9 @@ import logging
 import shutil
 import os
 
-logging.basicConfig(
-    filename="log.txt", encoding="utf-8", level=logging.WARNING, filemode="w"
-)
+from . import main_log
+
+logging = main_log.getChild(__name__)
 
 
 def move_photos(source: Path, out: Path, max_files=float("inf")):
