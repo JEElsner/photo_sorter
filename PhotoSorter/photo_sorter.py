@@ -86,27 +86,3 @@ def move_photos(source: Path, out: Path, max_files=float("inf")):
         except Exception as err:
             logging.error(f"Failed to move file {filename}. Skipping.")
             logging.error(f"{err}")
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(
-        prog="photo_sorter",
-    )
-
-    parser.add_argument("in_dir", action="store")
-    parser.add_argument("out_dir", action="store")
-    parser.add_argument("-m", "--max-files", action="store")
-
-    args = parser.parse_args()
-
-    source = Path(args.in_dir)
-    out = Path(args.out_dir)
-
-    if args.max_files:
-        max_files = int(args.max_files)
-    else:
-        max_files = float("inf")
-
-    move_photos(source, out, max_files)
