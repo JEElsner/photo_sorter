@@ -395,6 +395,9 @@ class BatchMoveQueue(threading.Thread):
                 message = err["message"]
                 logging.warn(f"Error processing batch: {message}")
 
+            if not r.json().get("responses") and counter == 0:
+                continue
+
             for resp in r.json()["responses"]:
                 if resp["status"] not in [200, 201]:
                     body = resp["body"]
