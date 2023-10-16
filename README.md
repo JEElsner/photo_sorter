@@ -53,3 +53,7 @@ Here's how to register an app on Microsoft Azure Active Directory (a.k.a. Micros
 ## Development
 
 To set up for development, follow the same steps in the [Installation](#installation-and-setup) section, except use `pip install -e .` instead in step 5.
+
+## License
+
+See [LICENSE.md](https://github.com/JEElsner/photo_sorter/blob/main/LICENSE.md)
